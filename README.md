@@ -105,3 +105,7 @@ Exit-Code: `0` OK, `1` Fehler, `2` abgebrochen.
 - `DrawingActions.cs` – Ansichten aktualisieren, Bemaßungshinweise, PDF-Export
 - `MacroConfig.cs` – Konfigurationsdatei
 - `Lang.cs`, `SE_RenderDrawing.lang.json` – Übersetzungen (DE, EN, erweiterbar)
+
+## Lizenz
+
+MIT – siehe [LICENSE](LICENSE).
