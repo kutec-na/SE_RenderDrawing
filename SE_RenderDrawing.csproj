@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+		<UseWindowsForms>true</UseWindowsForms>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<PlatformTarget>x64</PlatformTarget>
+		<RootNamespace>SE_RenderDrawing</RootNamespace>
+		<AssemblyName>SE_RenderDrawing</AssemblyName>
+		<Product>SE_RenderDrawing</Product>
+		<Version>1.0.0</Version>
+		<!-- keine lokalen Pfade in die Binärdateien schreiben -->
+		<Deterministic>true</Deterministic>
+		<PathMap>$(MSBuildProjectDirectory)=.</PathMap>
+		<Description>Solid Edge Makro: neue Revision im Schriftfeld eintragen und Zeichnung als PDF ablegen</Description>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="SolidEdge.Community.Net9" Version="1.0.1" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Sprachdatei: neben die EXE kopieren (vom Nutzer editierbar) und als Rückfall einbetten -->
+		<EmbeddedResource Include="SE_RenderDrawing.lang.json" LogicalName="SE_RenderDrawing.lang.json" />
+		<None Include="SE_RenderDrawing.lang.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+		<Compile Remove="test\**" />
+		<None Remove="test\**" />
+	</ItemGroup>
+
+</Project>

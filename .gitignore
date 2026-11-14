@@ -1,0 +1,12 @@
+bin/
+obj/
+publish/
+release/
+.vs/
+*.user
+
+# Testzeichnungen werden nicht veröffentlicht
+test/
+
+# lokale Einstellungen
+SE_RenderDrawing.config.json
