@@ -22,7 +22,7 @@ public sealed class RevisionDialog : Form
     private readonly Button _btnPrev = new() { Text = "◀", Width = 36, Height = 28 };
     private readonly Button _btnNext = new() { Text = "▶", Width = 36, Height = 28 };
     private readonly Label _lblPosition = new() { Width = 200, Height = 28, TextAlign = ContentAlignment.MiddleCenter, Font = new Font("Segoe UI", 10f, FontStyle.Bold) };
-    private readonly Label _lblTableInfo = new() { AutoSize = true, ForeColor = SystemColors.GrayText, Margin = new Padding(0, 0, 0, 4), MaximumSize = new Size(600, 0) };
+    private readonly Label _lblCaption = new() { AutoSize = false, AutoEllipsis = true, UseMnemonic = false, Margin = new Padding(0, 8, 0, 0) };
     private readonly ListView _list = new()
     {
         View = View.Details, FullRowSelect = true, HeaderStyle = ColumnHeaderStyle.Nonclickable,
@@ -50,6 +50,7 @@ public sealed class RevisionDialog : Form
 
     private readonly CheckBox _chkUpdate = new() { Text = Lang.L("Dialog.UpdateViews"), AutoSize = true };
     private readonly CheckBox _chkTracker = new() { Text = Lang.L("Dialog.ClearTracker"), AutoSize = true };
+    private readonly CheckBox _chkBlack = new() { Text = Lang.L("Dialog.SaveAllBlack"), AutoSize = true };
     private readonly Label _lblPdf = new() { AutoSize = false };
     private readonly Label _lblWarn = new() { AutoSize = true, ForeColor = Color.DarkRed, MaximumSize = new Size(600, 0) };
 
@@ -62,6 +63,7 @@ public sealed class RevisionDialog : Form
     public string Editor => _txtEditor.Text.Trim();
     public bool UpdateViews => _chkUpdate.Checked;
     public bool ClearTracker => _chkTracker.Checked;
+    public bool SaveAllColorsBlack => _chkBlack.Checked;
     /// <summary>Speicherort wie eingegeben (absolut oder relativ).</summary>
     public string PdfFolder => _txtFolder.Text.Trim();
     /// <summary>Wie die Revision in den Dateinamen eingefügt wird.</summary>
@@ -82,7 +84,7 @@ public sealed class RevisionDialog : Form
 
     public RevisionDialog(string draftPath, IReadOnlyList<DraftTable> tables, DraftTable? auto, MacroConfig cfg,
         int startPosition, string? presetEditor, bool updateViews, bool clearTracker, string pdfFolder,
-        FileNameRule fileNameRule, string? presetDescription = null)
+        FileNameRule fileNameRule, bool saveAllColorsBlack, string? presetDescription = null)
     {
         _draftPath = draftPath;
         _tables = tables;
@@ -105,6 +107,7 @@ public sealed class RevisionDialog : Form
         _dtDate.Value = DateTime.Today;
         _chkUpdate.Checked = updateViews;
         _chkTracker.Checked = clearTracker;
+        _chkBlack.Checked = saveAllColorsBlack;
 
         // --- Navigation über der Vorschau ---
         var nav = new TableLayoutPanel { ColumnCount = 3, RowCount = 1, AutoSize = true, Anchor = AnchorStyles.None, Margin = new Padding(0, 8, 0, 2) };
@@ -145,17 +148,19 @@ public sealed class RevisionDialog : Form
         _combos[Field.Editor].SelectedIndexChanged += (_, _) => { if (!_loading) PrefillEditor(); };
         foreach (var c in _combos.Values) c.SelectedIndexChanged += (_, _) => { if (!_loading) RefreshInfo(); };
 
-        // --- Speicherort (Textfeld füllt bis zum Button am rechten Rand) ---
-        var folderRow = new TableLayoutPanel { ColumnCount = 3, RowCount = 1, AutoSize = true, Margin = new Padding(0, 8, 0, 0) };
-        folderRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        folderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        folderRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        folderRow.Controls.Add(new Label { Text = Lang.L("Dialog.SaveIn"), AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 0) }, 0, 0);
+        // --- Speicherort: 5. Zeile der Feldtabelle, Textfeld bündig unter den Eingabefeldern, Button am rechten Rand ---
+        var folderCell = new TableLayoutPanel { ColumnCount = 2, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0) };
+        folderCell.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        folderCell.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _txtFolder.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-        folderRow.Controls.Add(_txtFolder, 1, 0);
+        folderCell.Controls.Add(_txtFolder, 0, 0);
         _btnBrowse.Width = _txtAffix.Width; // sitzt genau über dem Prä-/Suffix-Feld
         _btnBrowse.Height = _txtFolder.PreferredHeight + 2;
-        folderRow.Controls.Add(_btnBrowse, 2, 0);
+        folderCell.Controls.Add(_btnBrowse, 1, 0);
+        fields.Controls.Add(new Label { Text = Lang.L("Dialog.SaveIn"), AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 0) }, 0, fieldRow);
+        fields.Controls.Add(folderCell, 1, fieldRow);
+        fields.SetColumnSpan(folderCell, 4);
+        fieldRow++;
         _tip.SetToolTip(_txtFolder, Lang.T("Dialog.FolderTip"));
         _tip.SetToolTip(_btnBrowse, Lang.L("Dialog.BrowseTip"));
         _txtFolder.Text = pdfFolder;
@@ -219,9 +224,8 @@ public sealed class RevisionDialog : Form
             600,
             fields.GetPreferredSize(Size.Empty).Width,
             ruleRow.GetPreferredSize(Size.Empty).Width,
-            folderRow.GetPreferredSize(Size.Empty).Width,
         }.Max();
-        foreach (var row in new Control[] { fields, folderRow, ruleRow })
+        foreach (var row in new Control[] { fields, ruleRow })
         {
             row.MinimumSize = new Size(_contentWidth, 0);
             row.MaximumSize = new Size(_contentWidth, 0);
@@ -231,7 +235,8 @@ public sealed class RevisionDialog : Form
         _list.Width = _contentWidth - 3;
         navHost.Width = _contentWidth;
         buttons.Width = _contentWidth;
-        _lblTableInfo.MaximumSize = new Size(_contentWidth, 0);
+        // Kopfzeile der Tabelle: genau eine Zeile, zu lang → am Ende mit … gekürzt
+        _lblCaption.Size = new Size(_contentWidth - 3, TextRenderer.MeasureText("Ag", _lblCaption.Font).Height + 4);
         // Warnzeile: genau eine Zeile, mehrere Hinweise mit " · " getrennt, zu lange am Ende mit … gekürzt (Tooltip zeigt alle)
         _lblWarn.AutoSize = false;
         _lblWarn.AutoEllipsis = true;
@@ -249,17 +254,16 @@ public sealed class RevisionDialog : Form
 
         var main = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false };
         main.Controls.Add(new Label { Text = Lang.L("Dialog.DrawingLabel") + " " + Path.GetFileName(draftPath), UseMnemonic = false, AutoSize = true, Font = new Font(Font, FontStyle.Bold) });
-        main.Controls.Add(new Label { Text = Lang.L("Dialog.TableCaption"), AutoSize = true, Margin = new Padding(0, 8, 0, 0) });
+        main.Controls.Add(_lblCaption);
         main.Controls.Add(navHost);
-        main.Controls.Add(_lblTableInfo);
         main.Controls.Add(_list);
-        main.Controls.Add(fields);
-        main.Controls.Add(folderRow);
-        main.Controls.Add(ruleRow);
-        main.Controls.Add(_lblPdf);
+        main.Controls.Add(fields);       // Revision, Beschreibung, Datum, Bearbeiter, Speichern in
+        main.Controls.Add(ruleRow);      // Revision anhängen …
         main.Controls.Add(_chkUpdate);
         main.Controls.Add(_chkTracker);
-        main.Controls.Add(_lblWarn);
+        main.Controls.Add(_chkBlack);
+        main.Controls.Add(_lblPdf);      // aufgelöster Pfad und Dateiname
+        main.Controls.Add(_lblWarn);     // Status und Fehlermeldungen
         main.Controls.Add(buttons);
         Controls.Add(main);
 
@@ -320,13 +324,12 @@ public sealed class RevisionDialog : Form
             _btnPrev.Enabled = _btnNext.Enabled = _tables.Count > 0;
             _lblPosition.Text = _position == 0 ? Lang.L("Dialog.Automatic") : $"{_position}";
 
-            // Info-Zeile
-            if (_tables.Count == 0)
-                _lblTableInfo.Text = Lang.T("Dialog.NoTables");
-            else if (t is null)
-                _lblTableInfo.Text = Lang.T("Dialog.NoMatchingTable");
-            else
-                _lblTableInfo.Text = Lang.T("Dialog.TableInfo", t.Number, _tables.Count, t.Name, t.ColumnCount, t.FilledCount, t.Capacity);
+            // Kopfzeile: "Änderungstabelle im Schriftfeld: Tabelle x von n („Name“)"
+            var info = _tables.Count == 0 ? Lang.T("Dialog.NoTables")
+                     : t is null ? Lang.T("Dialog.NoMatchingTable")
+                     : Lang.T("Dialog.TableRef", t.Number, _tables.Count, t.Name);
+            _lblCaption.Text = Lang.L("Dialog.TableCaption") + " " + info;
+            _tip.SetToolTip(_lblCaption, _lblCaption.Text);
 
             // Vorschau in der Reihenfolge wie im Schriftfeld
             _list.BeginUpdate();

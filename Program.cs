@@ -18,6 +18,7 @@ namespace SE_RenderDrawing;
 ///   --no-dialog         ohne Dialog
 ///   --update            Zeichnungsansichten aktualisieren
 ///   --clear-tracker     Hinweise geänderter Bemaßungen löschen
+///   --black / --no-black  PDF mit / ohne „Alle Farben schwarz speichern“
 ///   --list              nur Tabellen und automatische Auswahl ausgeben, nichts ändern
 ///   --pdf-dir &lt;ordner&gt;  Speicherort der PDF (absolut oder relativ zur Zeichnung)
 /// </summary>
@@ -91,7 +92,7 @@ internal static class Program
         DraftTable? table;
         Dictionary<Field, int> columns;
         string revision, text, editor, date, pdf;
-        bool updateViews, clearTracker;
+        bool updateViews, clearTracker, allBlack;
 
         if (opt.NoDialog)
         {
@@ -108,12 +109,14 @@ internal static class Program
             date = opt.Date ?? DateTime.Today.ToString(cfg.DateFormat);
             updateViews = opt.UpdateViews ?? cfg.UpdateViews;
             clearTracker = opt.ClearTracker ?? cfg.ClearDimensionTracker;
+            allBlack = opt.AllBlack ?? cfg.SaveAllColorsBlack ?? DrawingActions.GetSaveAllColorsBlack(app) ?? false;
             pdf = PdfNaming.FullPath(draftPath, revision, opt.PdfDir ?? cfg.PdfFolder, cfg.PdfName);
         }
         else
         {
             using var dlg = new RevisionDialog(draftPath, tables, auto, cfg, opt.Table ?? 0,
-                opt.Editor ?? cfg.Editor, opt.UpdateViews ?? cfg.UpdateViews, opt.ClearTracker ?? cfg.ClearDimensionTracker, opt.PdfDir ?? cfg.PdfFolder, cfg.PdfName, opt.Text);
+                opt.Editor ?? cfg.Editor, opt.UpdateViews ?? cfg.UpdateViews, opt.ClearTracker ?? cfg.ClearDimensionTracker, opt.PdfDir ?? cfg.PdfFolder, cfg.PdfName,
+                opt.AllBlack ?? cfg.SaveAllColorsBlack ?? DrawingActions.GetSaveAllColorsBlack(app) ?? false, opt.Text);
             if (dlg.ShowDialog(owner) != DialogResult.OK)
                 return 2;
             table = dlg.SelectedTable;
@@ -121,7 +124,8 @@ internal static class Program
             revision = dlg.Revision; text = dlg.Description; editor = dlg.Editor; date = dlg.Date; pdf = dlg.PdfPath;
             cfg.PdfFolder = dlg.PdfFolder;
             cfg.PdfName = dlg.FileNameRule;
-            updateViews = dlg.UpdateViews; clearTracker = dlg.ClearTracker;
+            updateViews = dlg.UpdateViews; clearTracker = dlg.ClearTracker; allBlack = dlg.SaveAllColorsBlack;
+            cfg.SaveAllColorsBlack = allBlack;
 
             if (editor.Length > 0) cfg.Editor = editor;
             cfg.UpdateViews = updateViews;
@@ -176,7 +180,7 @@ internal static class Program
             }
 
             // Ordner wird im Dialog nach Rückfrage angelegt, im Stapelbetrieb automatisch
-            DrawingActions.ExportPdf(doc, pdf);
+            DrawingActions.ExportPdf(app, doc, pdf, allBlack);
             log.Add(Lang.T("Log.Pdf", pdf));
         }
 
@@ -223,7 +227,7 @@ internal static class Program
         public string? DocPath, Revision, Text, Editor, Date, PdfDir;
         public int? Table;
         public bool NoDialog, List;
-        public bool? UpdateViews, ClearTracker;
+        public bool? UpdateViews, ClearTracker, AllBlack;
 
         public static Options Parse(string[] args)
         {
@@ -242,6 +246,8 @@ internal static class Program
                     case "--no-dialog": o.NoDialog = true; break;
                     case "--update": o.UpdateViews = true; break;
                     case "--clear-tracker": o.ClearTracker = true; break;
+                    case "--black": o.AllBlack = true; break;
+                    case "--no-black": o.AllBlack = false; break;
                     case "--list": o.List = true; break;
                     case "--pdf-dir": o.PdfDir = Next(); break;
                     default: throw new ArgumentException(Lang.T("Err.UnknownArgument", args[i]));

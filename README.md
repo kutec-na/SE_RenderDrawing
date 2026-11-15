@@ -20,6 +20,9 @@ Solid Edge Makro (C#, .NET 9) für die aktive Zeichnung (`.dft`):
      - nachstehend: vor den Teil danach gesetzt, mit Suffix → `ABC_12-3456-789_` + `AC-` + `Bauteil`
      - Option aus: PDF heißt wie die Zeichnung (`ABC_12-3456-789_Bauteil.pdf`)
    - Optional (standardmäßig **aus**): Zeichnungsansichten aktualisieren, Hinweise geänderter Bemaßungen löschen.
+   - **Alle Farben schwarz speichern**: setzt die gleichnamige Solid-Edge-Option nur für diesen PDF-Export
+     (danach wird die vorherige Einstellung wiederhergestellt). Vorbelegung: zuletzt verwendet, sonst die Einstellung von Solid Edge.
+   - Reihenfolge unter den Eingabefeldern: Speichern in, Revision anhängen, die drei Optionen, aufgelöster PDF-Pfad, Statuszeile.
 2. **Eintrag** in die Zeile nach dem letzten Eintrag. Ist die Tabelle voll, wird die älteste Zeile entfernt
    und alle übrigen rücken eine Zeile nach (die Anzeigerichtung, z. B. von unten nach oben, bestimmt die Vorlage).
 3. **Speichern** der Zeichnung.
@@ -61,6 +64,7 @@ und nach jedem Lauf mit Dialog aktualisiert (Bearbeiter, Häkchen). Das Verzeich
 | `Language` | Sprache des Dialogs, Gruppe in `SE_RenderDrawing.lang.json` (Standard `DE`, unbekannt → `EN`) |
 | `Editor` | zuletzt verwendeter Bearbeiter |
 | `UpdateViews` / `ClearDimensionTracker` | Vorbelegung der Häkchen (Standard `false`) |
+| `SaveAllColorsBlack` | PDF mit „Alle Farben schwarz speichern“ (zuletzt verwendet; `null` = Einstellung von Solid Edge) |
 | `DateFormat` | Datumsformat in der Tabelle (Standard `dd.MM.yyyy`) |
 | `FirstRevision` | Revision bei leerer Tabelle (Standard `AA`) |
 | `PdfFolder` | zuletzt verwendeter Speicherort, absolut oder relativ zur .dft (Standard `.\Zeichnungen\`) |
@@ -90,6 +94,7 @@ Voraussetzung auf dem Zielrechner: .NET 9 Desktop Runtime (x64).
 | `--rev <XX>` / `--text <Text>` / `--name <Kürzel>` / `--date <TT.MM.JJJJ>` | Werte vorgeben |
 | `--no-dialog` | ohne Dialog, Ausgabe auf stdout |
 | `--update` / `--clear-tracker` | Ansichten aktualisieren / Bemaßungshinweise löschen |
+| `--black` / `--no-black` | PDF mit / ohne „Alle Farben schwarz speichern“ |
 | `--pdf-dir <ordner>` | Speicherort der PDF (absolut oder relativ zur Zeichnung); im Stapelbetrieb wird ein fehlender Ordner ohne Rückfrage angelegt |
 | `--list` | nur Tabellen, Spaltenzuordnung und automatische Auswahl ausgeben, nichts ändern |
 

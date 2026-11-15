@@ -51,6 +51,9 @@ public sealed class MacroConfig
     /// <summary>Hinweise der Bemaßungsverfolgung löschen (Vorbelegung im Dialog).</summary>
     public bool ClearDimensionTracker { get; set; } = false;
 
+    /// <summary>PDF mit „Alle Farben schwarz speichern“ erzeugen (zuletzt verwendet; null = Einstellung von Solid Edge übernehmen).</summary>
+    public bool? SaveAllColorsBlack { get; set; }
+
     /// <summary>Format, in dem das Datum in die Tabelle geschrieben wird.</summary>
     public string DateFormat { get; set; } = "dd.MM.yyyy";
 
