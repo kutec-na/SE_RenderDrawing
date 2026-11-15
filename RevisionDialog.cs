@@ -38,7 +38,8 @@ public sealed class RevisionDialog : Form
     private readonly TextBox _txtFolder = new() { Width = 260 };
     private readonly Button _btnBrowse = new() { Text = "…", Width = 32, Height = 25 };
 
-    private readonly CheckBox _chkAppendRev = new() { Text = Lang.L("Dialog.AppendRevision"), AutoSize = true, Margin = new Padding(0, 6, 12, 0) };
+    // linker Rand 3 px wie bei den übrigen Checkboxen (Standardrand), damit die Haken untereinander stehen
+    private readonly CheckBox _chkAppendRev = new() { Text = Lang.L("Dialog.AppendRevision"), AutoSize = true, Margin = new Padding(3, 6, 12, 0) };
     private readonly TextBox _txtSeparator = new() { Width = 36, TextAlign = HorizontalAlignment.Center };
     private readonly NumericUpDown _numCount = new() { Width = 50, Minimum = 0, Maximum = 20 };
     private readonly ComboBox _cmbPosition = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 110 };
