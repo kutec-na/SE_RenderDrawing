@@ -19,6 +19,9 @@ namespace SE_RenderDrawing;
 ///   --update            Zeichnungsansichten aktualisieren
 ///   --clear-tracker     Hinweise geänderter Bemaßungen löschen
 ///   --black / --no-black  PDF mit / ohne „Alle Farben schwarz speichern“
+///   --model &lt;x_t|jt|stp|igs|stl|pdf&gt;  zusätzlich das 3D-Modell exportieren; --no-model aus
+///   --no-entry          nichts in die Tabelle eintragen (nur exportieren)
+///   --force-open        3D-Export nicht im Hintergrund, sondern über das geöffnete Teil (Test)
 ///   --list              nur Tabellen und automatische Auswahl ausgeben, nichts ändern
 ///   --pdf-dir &lt;ordner&gt;  Speicherort der PDF (absolut oder relativ zur Zeichnung)
 /// </summary>
@@ -92,7 +95,9 @@ internal static class Program
         DraftTable? table;
         Dictionary<Field, int> columns;
         string revision, text, editor, date, pdf;
-        bool updateViews, clearTracker, allBlack;
+        bool updateViews, clearTracker, allBlack, exportModel;
+        ModelFormat modelFormat;
+        var modelSource = ModelExport.FindModelPath(doc);
 
         if (opt.NoDialog)
         {
@@ -111,12 +116,15 @@ internal static class Program
             clearTracker = opt.ClearTracker ?? cfg.ClearDimensionTracker;
             allBlack = opt.AllBlack ?? cfg.SaveAllColorsBlack ?? DrawingActions.GetSaveAllColorsBlack(app) ?? false;
             pdf = PdfNaming.FullPath(draftPath, revision, opt.PdfDir ?? cfg.PdfFolder, cfg.PdfName);
+            modelFormat = opt.ModelFormat ?? cfg.ModelFormat;
+            exportModel = (opt.ExportModel ?? cfg.ExportModel) && modelSource is not null;
         }
         else
         {
             using var dlg = new RevisionDialog(draftPath, tables, auto, cfg, opt.Table ?? 0,
                 opt.Editor ?? cfg.Editor, opt.UpdateViews ?? cfg.UpdateViews, opt.ClearTracker ?? cfg.ClearDimensionTracker, opt.PdfDir ?? cfg.PdfFolder, cfg.PdfName,
-                opt.AllBlack ?? cfg.SaveAllColorsBlack ?? DrawingActions.GetSaveAllColorsBlack(app) ?? false, opt.Text);
+                opt.AllBlack ?? cfg.SaveAllColorsBlack ?? DrawingActions.GetSaveAllColorsBlack(app) ?? false,
+                modelSource, opt.ExportModel ?? cfg.ExportModel, opt.ModelFormat ?? cfg.ModelFormat, opt.Text);
             if (dlg.ShowDialog(owner) != DialogResult.OK)
                 return 2;
             table = dlg.SelectedTable;
@@ -126,6 +134,8 @@ internal static class Program
             cfg.PdfName = dlg.FileNameRule;
             updateViews = dlg.UpdateViews; clearTracker = dlg.ClearTracker; allBlack = dlg.SaveAllColorsBlack;
             cfg.SaveAllColorsBlack = allBlack;
+            exportModel = dlg.ExportModel; modelFormat = dlg.ModelFormat;
+            cfg.ExportModel = exportModel; cfg.ModelFormat = modelFormat;
 
             if (editor.Length > 0) cfg.Editor = editor;
             cfg.UpdateViews = updateViews;
@@ -157,7 +167,7 @@ internal static class Program
             Put(Field.Date, date);
             Put(Field.Editor, editor);
 
-            if (table is not null && values.Count > 0)
+            if (table is not null && values.Count > 0 && !opt.NoEntry)
             {
                 var dropped = table.Add(values);
                 log.Add(Lang.T("Log.RevisionEntered", revision, table.Number));
@@ -182,6 +192,17 @@ internal static class Program
             // Ordner wird im Dialog nach Rückfrage angelegt, im Stapelbetrieb automatisch
             DrawingActions.ExportPdf(app, doc, pdf, allBlack);
             log.Add(Lang.T("Log.Pdf", pdf));
+
+            if (exportModel)
+            {
+                var modelTarget = ModelExport.TargetPath(pdf, modelFormat, cfg.Model3DPdfSuffix);
+                try
+                {
+                    var how = ModelExport.Export(app, doc, modelTarget, opt.ForceOpen);
+                    log.Add(Lang.T("Log.Model", modelTarget, how));
+                }
+                catch (Exception ex) { log.Add(Lang.T("Log.ModelFailed", ex.Message)); }
+            }
         }
 
         if (!opt.NoDialog && cfg.Save() is { } saveError) log.Add(Lang.T("Err.ConfigSave", saveError));
@@ -227,7 +248,9 @@ internal static class Program
         public string? DocPath, Revision, Text, Editor, Date, PdfDir;
         public int? Table;
         public bool NoDialog, List;
-        public bool? UpdateViews, ClearTracker, AllBlack;
+        public bool? UpdateViews, ClearTracker, AllBlack, ExportModel;
+        public ModelFormat? ModelFormat;
+        public bool NoEntry, ForceOpen;
 
         public static Options Parse(string[] args)
         {
@@ -248,6 +271,10 @@ internal static class Program
                     case "--clear-tracker": o.ClearTracker = true; break;
                     case "--black": o.AllBlack = true; break;
                     case "--no-black": o.AllBlack = false; break;
+                    case "--model": o.ExportModel = true; o.ModelFormat = ParseFormat(Next()); break;
+                    case "--no-model": o.ExportModel = false; break;
+                    case "--no-entry": o.NoEntry = true; break;
+                    case "--force-open": o.ForceOpen = true; break;
                     case "--list": o.List = true; break;
                     case "--pdf-dir": o.PdfDir = Next(); break;
                     default: throw new ArgumentException(Lang.T("Err.UnknownArgument", args[i]));
@@ -255,5 +282,16 @@ internal static class Program
             }
             return o;
         }
+
+        private static ModelFormat ParseFormat(string s) => s.Trim().TrimStart('.').ToLowerInvariant() switch
+        {
+            "x_t" or "parasolid" => SE_RenderDrawing.ModelFormat.Parasolid,
+            "jt" => SE_RenderDrawing.ModelFormat.JT,
+            "stp" or "step" => SE_RenderDrawing.ModelFormat.STEP,
+            "igs" or "iges" => SE_RenderDrawing.ModelFormat.IGES,
+            "stl" => SE_RenderDrawing.ModelFormat.STL,
+            "pdf" or "3dpdf" => SE_RenderDrawing.ModelFormat.Pdf3D,
+            _ => throw new ArgumentException(Lang.T("Err.UnknownArgument", s)),
+        };
     }
 }

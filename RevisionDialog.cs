@@ -39,6 +39,11 @@ public sealed class RevisionDialog : Form
     private readonly Button _btnBrowse = new() { Text = "…", Width = 32, Height = 25 };
 
     // linker Rand 3 px wie bei den übrigen Checkboxen (Standardrand), damit die Haken untereinander stehen
+    private readonly CheckBox _chkModel = new() { Text = Lang.L("Dialog.ExportModel"), AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(3, 5, 8, 0) };
+    private readonly ComboBox _cmbModel = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 180 };
+    private readonly string? _modelPath;
+    private readonly Label _lblModelFile = new() { AutoSize = true, Anchor = AnchorStyles.Left, ForeColor = SystemColors.GrayText, UseMnemonic = false, Margin = new Padding(8, 6, 0, 0) };
+
     private readonly CheckBox _chkAppendRev = new() { Text = Lang.L("Dialog.AppendRevision"), AutoSize = true, Margin = new Padding(3, 6, 12, 0) };
     private readonly TextBox _txtSeparator = new() { Width = 36, TextAlign = HorizontalAlignment.Center };
     private readonly NumericUpDown _numCount = new() { Width = 50, Minimum = 0, Maximum = 20 };
@@ -65,6 +70,11 @@ public sealed class RevisionDialog : Form
     public bool UpdateViews => _chkUpdate.Checked;
     public bool ClearTracker => _chkTracker.Checked;
     public bool SaveAllColorsBlack => _chkBlack.Checked;
+    /// <summary>3D-Modell zusätzlich exportieren (nur wenn eine Modellverknüpfung gefunden wurde).</summary>
+    public bool ExportModel => _chkModel.Checked && _modelPath is not null;
+    public ModelFormat ModelFormat => (ModelFormat)Math.Max(0, _cmbModel.SelectedIndex);
+    /// <summary>Zieldatei des 3D-Exports (gleicher Name und Ordner wie die PDF).</summary>
+    public string ModelPath => ModelExport.TargetPath(PdfPath, ModelFormat, _cfg.Model3DPdfSuffix);
     /// <summary>Speicherort wie eingegeben (absolut oder relativ).</summary>
     public string PdfFolder => _txtFolder.Text.Trim();
     /// <summary>Wie die Revision in den Dateinamen eingefügt wird.</summary>
@@ -85,7 +95,8 @@ public sealed class RevisionDialog : Form
 
     public RevisionDialog(string draftPath, IReadOnlyList<DraftTable> tables, DraftTable? auto, MacroConfig cfg,
         int startPosition, string? presetEditor, bool updateViews, bool clearTracker, string pdfFolder,
-        FileNameRule fileNameRule, bool saveAllColorsBlack, string? presetDescription = null)
+        FileNameRule fileNameRule, bool saveAllColorsBlack, string? modelPath, bool exportModel, ModelFormat modelFormat,
+        string? presetDescription = null)
     {
         _draftPath = draftPath;
         _tables = tables;
@@ -109,6 +120,12 @@ public sealed class RevisionDialog : Form
         _chkUpdate.Checked = updateViews;
         _chkTracker.Checked = clearTracker;
         _chkBlack.Checked = saveAllColorsBlack;
+        _modelPath = modelPath;
+        foreach (var f in Enum.GetValues<ModelFormat>())
+            _cmbModel.Items.Add(f == ModelFormat.Pdf3D ? Lang.L("Dialog.Format3DPdf") : ModelExport.DisplayName(f));
+        _cmbModel.SelectedIndex = (int)modelFormat;
+        _chkModel.Checked = exportModel && modelPath is not null;
+        _chkModel.Enabled = modelPath is not null;
 
         // --- Navigation über der Vorschau ---
         var nav = new TableLayoutPanel { ColumnCount = 3, RowCount = 1, AutoSize = true, Anchor = AnchorStyles.None, Margin = new Padding(0, 8, 0, 2) };
@@ -162,6 +179,19 @@ public sealed class RevisionDialog : Form
         fields.Controls.Add(folderCell, 1, fieldRow);
         fields.SetColumnSpan(folderCell, 4);
         fieldRow++;
+
+        // --- 3D-Modell: Schalter + Format, darunter bündig wie die übrigen Eingabefelder ---
+        var modelCell = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, WrapContents = false, Margin = new Padding(0) };
+        modelCell.Controls.Add(_cmbModel);
+        modelCell.Controls.Add(_lblModelFile);
+        fields.Controls.Add(_chkModel, 0, fieldRow);
+        fields.Controls.Add(modelCell, 1, fieldRow);
+        fields.SetColumnSpan(modelCell, 4);
+        fieldRow++;
+        _tip.SetToolTip(_chkModel, modelPath is null ? Lang.T("Dialog.NoModelTip") : Lang.T("Dialog.ExportModelTip", Path.GetFileName(modelPath)));
+        _chkModel.CheckedChanged += (_, _) => { _cmbModel.Enabled = _chkModel.Checked; RefreshInfo(); };
+        _cmbModel.SelectedIndexChanged += (_, _) => RefreshInfo();
+        _cmbModel.Enabled = _chkModel.Checked;
         _tip.SetToolTip(_txtFolder, Lang.T("Dialog.FolderTip"));
         _tip.SetToolTip(_btnBrowse, Lang.L("Dialog.BrowseTip"));
         _txtFolder.Text = pdfFolder;
@@ -439,6 +469,14 @@ public sealed class RevisionDialog : Form
         }
         if (pdf is not null && File.Exists(pdf))
             warn.Add(Lang.T("Warn.PdfExists"));
+        _lblModelFile.Text = string.Empty;
+        if (pdf is not null && ExportModel)
+        {
+            var model = ModelExport.TargetPath(pdf, ModelFormat, _cfg.Model3DPdfSuffix);
+            _lblModelFile.Text = "→ " + Path.GetFileName(model);
+            _tip.SetToolTip(_lblModelFile, model);
+            if (File.Exists(model)) warn.Add(Lang.T("Warn.ModelExists"));
+        }
         _lblWarn.Text = string.Join("  ·  ", warn);
         _tip.SetToolTip(_lblWarn, string.Join(Environment.NewLine, warn));
     }
@@ -494,6 +532,8 @@ public sealed class RevisionDialog : Form
             catch (Exception ex) { Complain(Lang.T("Msg.FolderCreateFailed", ex.Message), _txtFolder); return; }
         }
         if (File.Exists(pdf) && !Confirm(Lang.T("Msg.OverwriteConfirm", pdf)))
+            return;
+        if (ExportModel && ModelPath is var model && File.Exists(model) && !Confirm(Lang.T("Msg.OverwriteModelConfirm", model)))
             return;
 
         DialogResult = DialogResult.OK;

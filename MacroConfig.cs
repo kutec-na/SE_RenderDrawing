@@ -54,6 +54,15 @@ public sealed class MacroConfig
     /// <summary>PDF mit „Alle Farben schwarz speichern“ erzeugen (zuletzt verwendet; null = Einstellung von Solid Edge übernehmen).</summary>
     public bool? SaveAllColorsBlack { get; set; }
 
+    /// <summary>Zusätzlich das 3D-Modell exportieren (zuletzt verwendet).</summary>
+    public bool ExportModel { get; set; } = false;
+
+    /// <summary>Format des 3D-Exports (zuletzt verwendet).</summary>
+    public ModelFormat ModelFormat { get; set; } = ModelFormat.STEP;
+
+    /// <summary>Anhang an den Dateinamen beim 3D-PDF, damit die Zeichnungs-PDF nicht überschrieben wird.</summary>
+    public string Model3DPdfSuffix { get; set; } = "_3D";
+
     /// <summary>Format, in dem das Datum in die Tabelle geschrieben wird.</summary>
     public string DateFormat { get; set; } = "dd.MM.yyyy";
 
