@@ -74,7 +74,7 @@ public sealed class RevisionDialog : Form
     public bool ExportModel => _chkModel.Checked && _modelPath is not null;
     public ModelFormat ModelFormat => (ModelFormat)Math.Max(0, _cmbModel.SelectedIndex);
     /// <summary>Zieldatei des 3D-Exports (gleicher Name und Ordner wie die PDF).</summary>
-    public string ModelPath => ModelExport.TargetPath(PdfPath, ModelFormat, _cfg.Model3DPdfSuffix);
+    public string ModelPath => ModelExport.TargetPath(PdfPath, ModelFormat);
     /// <summary>Speicherort wie eingegeben (absolut oder relativ).</summary>
     public string PdfFolder => _txtFolder.Text.Trim();
     /// <summary>Wie die Revision in den Dateinamen eingefügt wird.</summary>
@@ -122,8 +122,8 @@ public sealed class RevisionDialog : Form
         _chkBlack.Checked = saveAllColorsBlack;
         _modelPath = modelPath;
         foreach (var f in Enum.GetValues<ModelFormat>())
-            _cmbModel.Items.Add(f == ModelFormat.Pdf3D ? Lang.L("Dialog.Format3DPdf") : ModelExport.DisplayName(f));
-        _cmbModel.SelectedIndex = (int)modelFormat;
+            _cmbModel.Items.Add(ModelExport.DisplayName(f));
+        _cmbModel.SelectedIndex = Enum.IsDefined(modelFormat) ? (int)modelFormat : (int)ModelFormat.STEP;
         _chkModel.Checked = exportModel && modelPath is not null;
         _chkModel.Enabled = modelPath is not null;
 
@@ -472,7 +472,7 @@ public sealed class RevisionDialog : Form
         _lblModelFile.Text = string.Empty;
         if (pdf is not null && ExportModel)
         {
-            var model = ModelExport.TargetPath(pdf, ModelFormat, _cfg.Model3DPdfSuffix);
+            var model = ModelExport.TargetPath(pdf, ModelFormat);
             _lblModelFile.Text = "→ " + Path.GetFileName(model);
             _tip.SetToolTip(_lblModelFile, model);
             if (File.Exists(model)) warn.Add(Lang.T("Warn.ModelExists"));

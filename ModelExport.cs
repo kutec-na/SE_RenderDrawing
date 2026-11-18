@@ -4,8 +4,12 @@ using SeDocument = SolidEdgeFramework.SolidEdgeDocument;
 
 namespace SE_RenderDrawing;
 
-/// <summary>Austauschformate für das 3D-Modell.</summary>
-public enum ModelFormat { Parasolid, JT, STEP, IGES, STL, Pdf3D }
+/// <summary>
+/// Austauschformate für das 3D-Modell.
+/// (3D-PDF ist nicht enthalten: über die API liefert Solid Edge bei *.pdf nur den 2D-Übersetzer;
+/// der Dateityp „3D Adobe Acrobat-Dokumente“ aus dem Dialog „Als übersetzt speichern“ ist nicht ansprechbar.)
+/// </summary>
+public enum ModelFormat { Parasolid, JT, STEP, IGES, STL }
 
 /// <summary>
 /// Exportiert das 3D-Modell, auf dem die Zeichnung beruht (Verknüpfung der ersten Hauptansicht).
@@ -21,7 +25,6 @@ public static class ModelExport
         ModelFormat.STEP => ".stp",
         ModelFormat.IGES => ".igs",
         ModelFormat.STL => ".stl",
-        ModelFormat.Pdf3D => ".pdf",
         _ => throw new ArgumentOutOfRangeException(nameof(f)),
     };
 
@@ -32,21 +35,12 @@ public static class ModelExport
         ModelFormat.STEP => "STEP (*.stp)",
         ModelFormat.IGES => "IGES (*.igs)",
         ModelFormat.STL => "STL (*.stl)",
-        ModelFormat.Pdf3D => "3D-PDF (*.pdf)",
         _ => f.ToString(),
     };
 
-    /// <summary>
-    /// Zieldatei: Name und Ordner wie die PDF der Zeichnung, nur mit anderer Endung.
-    /// Beim 3D-PDF wird <paramref name="pdf3DSuffix"/> angehängt, damit die Zeichnungs-PDF nicht überschrieben wird.
-    /// </summary>
-    public static string TargetPath(string drawingPdfPath, ModelFormat f, string pdf3DSuffix)
-    {
-        var dir = Path.GetDirectoryName(drawingPdfPath)!;
-        var name = Path.GetFileNameWithoutExtension(drawingPdfPath);
-        if (f == ModelFormat.Pdf3D) name += string.IsNullOrEmpty(pdf3DSuffix) ? "_3D" : pdf3DSuffix;
-        return Path.Combine(dir, name + Extension(f));
-    }
+    /// <summary>Zieldatei: Name und Ordner wie die PDF der Zeichnung, nur mit anderer Endung.</summary>
+    public static string TargetPath(string drawingPdfPath, ModelFormat f) =>
+        Path.ChangeExtension(drawingPdfPath, Extension(f));
 
     /// <summary>Verknüpfung der ersten Hauptansicht (sonst erste Ansicht mit Modell, sonst erste Modellverknüpfung).</summary>
     public static ModelLink? FindModelLink(DraftDocument doc)
@@ -79,79 +73,63 @@ public static class ModelExport
         var modelPath = link.FileName;
         Directory.CreateDirectory(Path.GetDirectoryName(target)!);
         if (File.Exists(target)) File.Delete(target);
+        var started = DateTime.Now;
 
-        // 3D-PDF: im Hintergrund liefert Solid Edge ein 2D-Bild des aktiven Fensters → immer über das aktivierte Teil
-        bool isPdf = Path.GetExtension(target).Equals(".pdf", StringComparison.OrdinalIgnoreCase);
-        if (isPdf) forceOpen = true;
-
-        // 1) Hintergrund: das von der Zeichnung geladene Modell direkt speichern
-        if (!forceOpen)
-        {
-            try
-            {
-                if (link.ModelDocument is SeDocument background)
-                {
-                    background.SaveCopyAs(target);
-                    if (File.Exists(target)) return Lang.T("Log.ModelBackground");
-                }
-            }
-            catch { /* weiter mit Öffnen */ }
-        }
-
-        // 2) Teil öffnen (falls nicht offen), aktivieren, exportieren, Zeichnung wieder aktivieren
-        SeDocument? model = null;
-        foreach (SeDocument d in app.Documents)
-            if (string.Equals(d.FullName, modelPath, StringComparison.OrdinalIgnoreCase)) { model = d; break; }
-        bool openedHere = model is null;
-        model ??= (SeDocument)app.Documents.Open(modelPath);
         try
         {
-            model.Activate();
-            model.SaveCopyAs(target);
+            // 1) Hintergrund: das von der Zeichnung geladene Modell direkt speichern
+            if (!forceOpen)
+            {
+                try
+                {
+                    if (link.ModelDocument is SeDocument background)
+                    {
+                        background.SaveCopyAs(target);
+                        if (File.Exists(target)) return Lang.T("Log.ModelBackground");
+                    }
+                }
+                catch { /* weiter mit Öffnen */ }
+            }
+
+            // 2) Teil öffnen (falls nicht offen), aktivieren, exportieren, Zeichnung wieder aktivieren
+            SeDocument? model = null;
+            foreach (SeDocument d in app.Documents)
+                if (string.Equals(d.FullName, modelPath, StringComparison.OrdinalIgnoreCase)) { model = d; break; }
+            bool openedHere = model is null;
+            model ??= (SeDocument)app.Documents.Open(modelPath);
+            try
+            {
+                model.Activate();
+                model.SaveCopyAs(target);
+            }
+            finally
+            {
+                if (openedHere) try { model.Close(false); } catch { }
+                try { draft.Activate(); } catch { }
+            }
+            if (!File.Exists(target))
+                throw new IOException(Lang.T("Err.ModelNotCreated", target));
+            return Lang.T(openedHere ? "Log.ModelOpened" : "Log.ModelActivated");
         }
         finally
         {
-            if (openedHere) try { model.Close(false); } catch { }
-            try { draft.Activate(); } catch { }
+            DeleteTranslatorLog(target, started);
         }
-        if (!File.Exists(target))
-            throw new IOException(Lang.T("Err.ModelNotCreated", target));
-        if (isPdf && !Is3DPdf(target))
-        {
-            // Solid Edge hat nur eine 2D-PDF erzeugt (Option „3D-PDF“ in Solid Edge nicht aktiv) → nicht als 3D-PDF ablegen
-            try { File.Delete(target); } catch { }
-            throw new IOException(Lang.T("Err.No3DPdf"));
-        }
-        return Lang.T(openedHere ? "Log.ModelOpened" : "Log.ModelActivated");
     }
 
-    /// <summary>Prüft, ob die PDF eine 3D-Annotation enthält (auch in komprimierten Objektströmen).</summary>
-    public static bool Is3DPdf(string path)
+    /// <summary>
+    /// Der STEP-Übersetzer legt neben der Zieldatei eine gleichnamige .log-Datei ab.
+    /// Sie wird gelöscht, wenn sie bei diesem Export geschrieben wurde (ältere Dateien bleiben unberührt).
+    /// </summary>
+    private static void DeleteTranslatorLog(string target, DateTime started)
     {
-        var data = File.ReadAllBytes(path);
-        static bool Has3D(ReadOnlySpan<byte> s) =>
-            s.IndexOf("/Subtype/3D"u8) >= 0 || s.IndexOf("/Subtype /3D"u8) >= 0 || s.IndexOf("/3DD"u8) >= 0;
-        if (Has3D(data)) return true;
-
-        var marker = "stream"u8.ToArray();
-        int pos = 0;
-        while ((pos = data.AsSpan(pos).IndexOf(marker) is var i && i >= 0 ? pos + i : -1) >= 0)
+        if (!Path.GetExtension(target).Equals(Extension(ModelFormat.STEP), StringComparison.OrdinalIgnoreCase)) return;
+        var log = Path.ChangeExtension(target, ".log");
+        try
         {
-            int start = pos + marker.Length;
-            if (start < data.Length && data[start] == '\r') start++;
-            if (start < data.Length && data[start] == '\n') start++;
-            int end = data.AsSpan(start).IndexOf("endstream"u8);
-            if (end < 0) break;
-            try
-            {
-                using var z = new System.IO.Compression.ZLibStream(new MemoryStream(data, start, end), System.IO.Compression.CompressionMode.Decompress);
-                using var ms = new MemoryStream();
-                z.CopyTo(ms);
-                if (Has3D(ms.ToArray())) return true;
-            }
-            catch { /* nicht komprimiert oder anderes Verfahren */ }
-            pos = start + end;
+            if (File.Exists(log) && File.GetLastWriteTime(log) >= started.AddSeconds(-2))
+                File.Delete(log);
         }
-        return false;
+        catch { /* Protokoll ist nur Beiwerk */ }
     }
 }

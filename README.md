@@ -13,9 +13,8 @@ Solid Edge Makro (C#, .NET 9) für die aktive Zeichnung (`.dft`):
      - Datum = heute
    - **Speichern in:** Ordner der PDF, absolut (`D:\Ausgabe\`) oder relativ zum Ordner der Zeichnung
      (`.\Zeichnungen\`, Standard). Mit „…“ auswählbar. Darunter wird der vollständige PDF-Pfad angezeigt.
-   - **3D-Modell** (an/aus) mit Formatauswahl: Parasolid (`.x_t`), JT, STEP (`.stp`), IGES (`.igs`), STL, 3D-PDF.
-     Exportiert das Modell der ersten Hauptansicht unter dem Namen der PDF in denselben Ordner
-     (3D-PDF mit Anhang `_3D`, damit die Zeichnungs-PDF erhalten bleibt). Siehe „3D-Export“ unten.
+   - **3D-Modell** (an/aus) mit Formatauswahl: Parasolid (`.x_t`), JT, STEP (`.stp`), IGES (`.igs`), STL.
+     Exportiert das Modell der ersten Hauptansicht unter dem Namen der PDF in denselben Ordner. Siehe „3D-Export“ unten.
    - **Revision anhängen** (an/aus) mit vier Feldern, die nur bei gesetzter Option aktiv sind:
      **Trennzeichen** (`_`), **Anzahl** (`2`), **Position** (`vorstehend`/`nachstehend`), **Präfix/Suffix** (`-`).
      Die Revision wird beim n-ten Trennzeichen eingefügt (fehlt es: am Ende des Namens):
@@ -43,9 +42,10 @@ die Revision wird dann nur für den Dateinamen verwendet. Abgehängte Bemaßunge
 3. Geht das nicht, wird das Teil geöffnet (falls nicht schon offen), aktiviert und exportiert;
    ein vom Makro geöffnetes Teil wird danach wieder geschlossen und die Zeichnung aktiviert.
 
-**3D-PDF** wird immer über das aktivierte Teil erzeugt und anschließend geprüft. Erzeugt Solid Edge nur eine
-2D-PDF (3D-Option beim PDF-Speichern in Solid Edge nicht aktiv; Solid Edge übernimmt sie erst nach einem Neustart),
-wird die Datei nicht abgelegt und ein Hinweis angezeigt. Beim STEP-Export legt Solid Edge zusätzlich eine `.log`-Datei ab.
+Die `.log`-Datei, die der STEP-Übersetzer neben der Zieldatei anlegt, wird nach dem Export gelöscht.
+
+**3D-PDF** wird nicht angeboten: Über die API wählt Solid Edge bei `*.pdf` immer den 2D-Übersetzer;
+der Dateityp „3D Adobe Acrobat-Dokumente (*.pdf)“ aus „Als übersetzt speichern“ ist per API nicht ansprechbar.
 
 ## Automatische Auswahl der Änderungstabelle
 
@@ -78,8 +78,7 @@ und nach jedem Lauf mit Dialog aktualisiert (Bearbeiter, Häkchen). Das Verzeich
 | `Language` | Sprache des Dialogs, Gruppe in `SE_RenderDrawing.lang.json` (Standard `DE`, unbekannt → `EN`) |
 | `Editor` | zuletzt verwendeter Bearbeiter |
 | `UpdateViews` / `ClearDimensionTracker` | Vorbelegung der Häkchen (Standard `false`) |
-| `ExportModel` / `ModelFormat` | 3D-Export an/aus und Format (`Parasolid`, `JT`, `STEP`, `IGES`, `STL`, `Pdf3D`), zuletzt verwendet |
-| `Model3DPdfSuffix` | Anhang an den Dateinamen beim 3D-PDF (Standard `_3D`) |
+| `ExportModel` / `ModelFormat` | 3D-Export an/aus und Format (`Parasolid`, `JT`, `STEP`, `IGES`, `STL`), zuletzt verwendet |
 | `SaveAllColorsBlack` | PDF mit „Alle Farben schwarz speichern“ (zuletzt verwendet; `null` = Einstellung von Solid Edge) |
 | `DateFormat` | Datumsformat in der Tabelle (Standard `dd.MM.yyyy`) |
 | `FirstRevision` | Revision bei leerer Tabelle (Standard `AA`) |
@@ -110,7 +109,7 @@ Voraussetzung auf dem Zielrechner: .NET 9 Desktop Runtime (x64).
 | `--rev <XX>` / `--text <Text>` / `--name <Kürzel>` / `--date <TT.MM.JJJJ>` | Werte vorgeben |
 | `--no-dialog` | ohne Dialog, Ausgabe auf stdout |
 | `--update` / `--clear-tracker` | Ansichten aktualisieren / Bemaßungshinweise löschen |
-| `--model <x_t\|jt\|stp\|igs\|stl\|pdf>` / `--no-model` | 3D-Modell zusätzlich exportieren / nicht exportieren |
+| `--model <x_t\|jt\|stp\|igs\|stl>` / `--no-model` | 3D-Modell zusätzlich exportieren / nicht exportieren |
 | `--no-entry` | nichts in die Tabelle eintragen, nur PDF (und ggf. 3D-Modell) erzeugen |
 | `--force-open` | 3D-Export über das geöffnete Teil statt im Hintergrund (Test) |
 | `--black` / `--no-black` | PDF mit / ohne „Alle Farben schwarz speichern“ |

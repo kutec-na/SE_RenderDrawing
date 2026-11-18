@@ -19,7 +19,7 @@ namespace SE_RenderDrawing;
 ///   --update            Zeichnungsansichten aktualisieren
 ///   --clear-tracker     Hinweise geänderter Bemaßungen löschen
 ///   --black / --no-black  PDF mit / ohne „Alle Farben schwarz speichern“
-///   --model &lt;x_t|jt|stp|igs|stl|pdf&gt;  zusätzlich das 3D-Modell exportieren; --no-model aus
+///   --model &lt;x_t|jt|stp|igs|stl&gt;  zusätzlich das 3D-Modell exportieren; --no-model aus
 ///   --no-entry          nichts in die Tabelle eintragen (nur exportieren)
 ///   --force-open        3D-Export nicht im Hintergrund, sondern über das geöffnete Teil (Test)
 ///   --list              nur Tabellen und automatische Auswahl ausgeben, nichts ändern
@@ -39,7 +39,11 @@ internal static class Program
         try { opt = Options.Parse(args); }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message, Title, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            // im Stapelbetrieb auf die Konsole, sonst als Meldung
+            if (args.Any(a => a.Equals("--no-dialog", StringComparison.OrdinalIgnoreCase) || a.Equals("--list", StringComparison.OrdinalIgnoreCase)))
+                Console.WriteLine(Lang.T("Err.Prefix", ex.Message));
+            else
+                MessageBox.Show(ex.Message, Title, MessageBoxButtons.OK, MessageBoxIcon.Error);
             return 1;
         }
 
@@ -195,7 +199,7 @@ internal static class Program
 
             if (exportModel)
             {
-                var modelTarget = ModelExport.TargetPath(pdf, modelFormat, cfg.Model3DPdfSuffix);
+                var modelTarget = ModelExport.TargetPath(pdf, modelFormat);
                 try
                 {
                     var how = ModelExport.Export(app, doc, modelTarget, opt.ForceOpen);
@@ -290,7 +294,6 @@ internal static class Program
             "stp" or "step" => SE_RenderDrawing.ModelFormat.STEP,
             "igs" or "iges" => SE_RenderDrawing.ModelFormat.IGES,
             "stl" => SE_RenderDrawing.ModelFormat.STL,
-            "pdf" or "3dpdf" => SE_RenderDrawing.ModelFormat.Pdf3D,
             _ => throw new ArgumentException(Lang.T("Err.UnknownArgument", s)),
         };
     }
