@@ -24,6 +24,7 @@ Solid Edge Makro (C#, .NET 9) für die aktive Zeichnung (`.dft`):
    - Optional (standardmäßig **aus**): Zeichnungsansichten aktualisieren, Hinweise geänderter Bemaßungen löschen.
    - **Alle Farben schwarz speichern**: setzt die gleichnamige Solid-Edge-Option nur für diesen PDF-Export
      (danach wird die vorherige Einstellung wiederhergestellt). Vorbelegung: zuletzt verwendet, sonst die Einstellung von Solid Edge.
+   - **Ergebnisprotokoll anzeigen**: Zusammenfassung am Ende ein/aus (zuletzt verwendet). Bei Warnungen oder Fehlern wird sie immer angezeigt.
    - Reihenfolge unter den Eingabefeldern: Speichern in, Revision anhängen, die drei Optionen, aufgelöster PDF-Pfad, Statuszeile.
 2. **Eintrag** in die Zeile nach dem letzten Eintrag. Ist die Tabelle voll, wird die älteste Zeile entfernt
    und alle übrigen rücken eine Zeile nach (die Anzeigerichtung, z. B. von unten nach oben, bestimmt die Vorlage).
@@ -79,6 +80,7 @@ und nach jedem Lauf mit Dialog aktualisiert (Bearbeiter, Häkchen). Das Verzeich
 | `Editor` | zuletzt verwendeter Bearbeiter |
 | `UpdateViews` / `ClearDimensionTracker` | Vorbelegung der Häkchen (Standard `false`) |
 | `ExportModel` / `ModelFormat` | 3D-Export an/aus und Format (`Parasolid`, `JT`, `STEP`, `IGES`, `STL`), zuletzt verwendet |
+| `ShowResult` | Zusammenfassung am Ende anzeigen (Standard `true`; bei Problemen immer) |
 | `SaveAllColorsBlack` | PDF mit „Alle Farben schwarz speichern“ (zuletzt verwendet; `null` = Einstellung von Solid Edge) |
 | `DateFormat` | Datumsformat in der Tabelle (Standard `dd.MM.yyyy`) |
 | `FirstRevision` | Revision bei leerer Tabelle (Standard `AA`) |
@@ -128,6 +130,7 @@ Exit-Code: `0` OK, `1` Fehler, `2` abgebrochen.
 - `DrawingActions.cs` – Ansichten aktualisieren, Bemaßungshinweise, PDF-Export
 - `ModelExport.cs` – 3D-Modell ermitteln und exportieren
 - `MacroConfig.cs` – Konfigurationsdatei
+- `SE_RenderDrawing.ico` – Programmsymbol (erscheint als Knopf in der Solid-Edge-Multifunktionsleiste)
 - `Lang.cs`, `SE_RenderDrawing.lang.json` – Übersetzungen (DE, EN, erweiterbar)
 
 ## Lizenz

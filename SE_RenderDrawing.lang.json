@@ -33,7 +33,8 @@
     "Dialog.Cancel": 16,
     "App.Title": 40,
     "Dialog.SaveAllBlack": 50,
-    "Dialog.ExportModel": 16
+    "Dialog.ExportModel": 16,
+    "Dialog.ShowResult": 50
   },
   "DE": {
     "App.Title": "Zeichnungsrevision",
@@ -77,6 +78,8 @@
     "Dialog.UpdateViews": "Zeichnungsansichten aktualisieren",
     "Dialog.ClearTracker": "Hinweise geänderter Bemaßungen löschen",
     "Dialog.SaveAllBlack": "Alle Farben schwarz speichern",
+    "Dialog.ShowResult": "Ergebnisprotokoll anzeigen",
+    "Dialog.ShowResultTip": "Zusammenfassung am Ende anzeigen. Bei Warnungen oder Fehlern wird sie immer angezeigt.",
     "Dialog.Ok": "Revision anlegen && PDF",
     "Dialog.Cancel": "Abbrechen",
     "Warn.FolderMissing": "Der Ordner existiert noch nicht und wird nach Rückfrage angelegt.",
@@ -176,6 +179,8 @@
     "Dialog.UpdateViews": "Update drawing views",
     "Dialog.ClearTracker": "Clear changed-dimension markers",
     "Dialog.SaveAllBlack": "Save all colors as black",
+    "Dialog.ShowResult": "Show result summary",
+    "Dialog.ShowResultTip": "Show the summary at the end. It is always shown if there are warnings or errors.",
     "Dialog.Ok": "Add revision && PDF",
     "Dialog.Cancel": "Cancel",
     "Warn.FolderMissing": "The folder does not exist yet and will be created after confirmation.",

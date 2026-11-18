@@ -99,7 +99,7 @@ internal static class Program
         DraftTable? table;
         Dictionary<Field, int> columns;
         string revision, text, editor, date, pdf;
-        bool updateViews, clearTracker, allBlack, exportModel;
+        bool updateViews, clearTracker, allBlack, exportModel, showResult = true;
         ModelFormat modelFormat;
         var modelSource = ModelExport.FindModelPath(doc);
 
@@ -128,7 +128,7 @@ internal static class Program
             using var dlg = new RevisionDialog(draftPath, tables, auto, cfg, opt.Table ?? 0,
                 opt.Editor ?? cfg.Editor, opt.UpdateViews ?? cfg.UpdateViews, opt.ClearTracker ?? cfg.ClearDimensionTracker, opt.PdfDir ?? cfg.PdfFolder, cfg.PdfName,
                 opt.AllBlack ?? cfg.SaveAllColorsBlack ?? DrawingActions.GetSaveAllColorsBlack(app) ?? false,
-                modelSource, opt.ExportModel ?? cfg.ExportModel, opt.ModelFormat ?? cfg.ModelFormat, opt.Text);
+                modelSource, opt.ExportModel ?? cfg.ExportModel, opt.ModelFormat ?? cfg.ModelFormat, cfg.ShowResult, opt.Text);
             if (dlg.ShowDialog(owner) != DialogResult.OK)
                 return 2;
             table = dlg.SelectedTable;
@@ -140,6 +140,7 @@ internal static class Program
             cfg.SaveAllColorsBlack = allBlack;
             exportModel = dlg.ExportModel; modelFormat = dlg.ModelFormat;
             cfg.ExportModel = exportModel; cfg.ModelFormat = modelFormat;
+            showResult = dlg.ShowResult; cfg.ShowResult = showResult;
 
             if (editor.Length > 0) cfg.Editor = editor;
             cfg.UpdateViews = updateViews;
@@ -147,8 +148,9 @@ internal static class Program
         }
 
         var log = new List<string>();
-        if (cfg.LoadError is not null) log.Add(Lang.T("Err.ConfigLoad", cfg.LoadError));
-        if (Lang.LoadError is not null) log.Add(Lang.LoadError);
+        bool problems = false; // Warnungen/Fehler → Zusammenfassung immer zeigen
+        if (cfg.LoadError is not null) { log.Add(Lang.T("Err.ConfigLoad", cfg.LoadError)); problems = true; }
+        if (Lang.LoadError is not null) { log.Add(Lang.LoadError); problems = true; }
         using (new WaitCursor())
         {
             if (updateViews)
@@ -162,7 +164,7 @@ internal static class Program
                 if (n > 0) log.Add(Lang.T("Log.TrackerCleared", n));
             }
             int detached = DrawingActions.CountDetachedDimensions(doc);
-            if (detached > 0) log.Add(Lang.T("Log.Detached", detached));
+            if (detached > 0) { log.Add(Lang.T("Log.Detached", detached)); problems = true; }
 
             var values = new Dictionary<int, string>();
             void Put(Field f, string v) { if (columns.TryGetValue(f, out var c) && c >= 0) values[c] = v; }
@@ -205,12 +207,13 @@ internal static class Program
                     var how = ModelExport.Export(app, doc, modelTarget, opt.ForceOpen);
                     log.Add(Lang.T("Log.Model", modelTarget, how));
                 }
-                catch (Exception ex) { log.Add(Lang.T("Log.ModelFailed", ex.Message)); }
+                catch (Exception ex) { log.Add(Lang.T("Log.ModelFailed", ex.Message)); problems = true; }
             }
         }
 
-        if (!opt.NoDialog && cfg.Save() is { } saveError) log.Add(Lang.T("Err.ConfigSave", saveError));
-        Report(opt, owner, string.Join(Environment.NewLine, log), MessageBoxIcon.Information);
+        if (!opt.NoDialog && cfg.Save() is { } saveError) { log.Add(Lang.T("Err.ConfigSave", saveError)); problems = true; }
+        if (opt.NoDialog || showResult || problems)
+            Report(opt, owner, string.Join(Environment.NewLine, log), problems ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
         return 0;
     }
 

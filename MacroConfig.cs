@@ -54,6 +54,9 @@ public sealed class MacroConfig
     /// <summary>PDF mit „Alle Farben schwarz speichern“ erzeugen (zuletzt verwendet; null = Einstellung von Solid Edge übernehmen).</summary>
     public bool? SaveAllColorsBlack { get; set; }
 
+    /// <summary>Zusammenfassung am Ende anzeigen (zuletzt verwendet). Bei Problemen wird sie immer angezeigt.</summary>
+    public bool ShowResult { get; set; } = true;
+
     /// <summary>Zusätzlich das 3D-Modell exportieren (zuletzt verwendet).</summary>
     public bool ExportModel { get; set; } = false;
 

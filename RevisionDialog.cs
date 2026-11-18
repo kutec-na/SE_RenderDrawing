@@ -57,6 +57,7 @@ public sealed class RevisionDialog : Form
     private readonly CheckBox _chkUpdate = new() { Text = Lang.L("Dialog.UpdateViews"), AutoSize = true };
     private readonly CheckBox _chkTracker = new() { Text = Lang.L("Dialog.ClearTracker"), AutoSize = true };
     private readonly CheckBox _chkBlack = new() { Text = Lang.L("Dialog.SaveAllBlack"), AutoSize = true };
+    private readonly CheckBox _chkResult = new() { Text = Lang.L("Dialog.ShowResult"), AutoSize = true };
     private readonly Label _lblPdf = new() { AutoSize = false };
     private readonly Label _lblWarn = new() { AutoSize = true, ForeColor = Color.DarkRed, MaximumSize = new Size(600, 0) };
 
@@ -70,6 +71,7 @@ public sealed class RevisionDialog : Form
     public bool UpdateViews => _chkUpdate.Checked;
     public bool ClearTracker => _chkTracker.Checked;
     public bool SaveAllColorsBlack => _chkBlack.Checked;
+    public bool ShowResult => _chkResult.Checked;
     /// <summary>3D-Modell zusätzlich exportieren (nur wenn eine Modellverknüpfung gefunden wurde).</summary>
     public bool ExportModel => _chkModel.Checked && _modelPath is not null;
     public ModelFormat ModelFormat => (ModelFormat)Math.Max(0, _cmbModel.SelectedIndex);
@@ -96,7 +98,7 @@ public sealed class RevisionDialog : Form
     public RevisionDialog(string draftPath, IReadOnlyList<DraftTable> tables, DraftTable? auto, MacroConfig cfg,
         int startPosition, string? presetEditor, bool updateViews, bool clearTracker, string pdfFolder,
         FileNameRule fileNameRule, bool saveAllColorsBlack, string? modelPath, bool exportModel, ModelFormat modelFormat,
-        string? presetDescription = null)
+        bool showResult, string? presetDescription = null)
     {
         _draftPath = draftPath;
         _tables = tables;
@@ -114,12 +116,15 @@ public sealed class RevisionDialog : Form
         Padding = new Padding(12);
         Font = new Font("Segoe UI", 9f);
         ShowInTaskbar = false;
+        try { Icon = Icon.ExtractAssociatedIcon(Environment.ProcessPath ?? Application.ExecutablePath); } catch { }
 
         _dtDate.CustomFormat = cfg.DateFormat;
         _dtDate.Value = DateTime.Today;
         _chkUpdate.Checked = updateViews;
         _chkTracker.Checked = clearTracker;
         _chkBlack.Checked = saveAllColorsBlack;
+        _chkResult.Checked = showResult;
+        _tip.SetToolTip(_chkResult, Lang.T("Dialog.ShowResultTip"));
         _modelPath = modelPath;
         foreach (var f in Enum.GetValues<ModelFormat>())
             _cmbModel.Items.Add(ModelExport.DisplayName(f));
@@ -293,6 +298,7 @@ public sealed class RevisionDialog : Form
         main.Controls.Add(_chkUpdate);
         main.Controls.Add(_chkTracker);
         main.Controls.Add(_chkBlack);
+        main.Controls.Add(_chkResult);
         main.Controls.Add(_lblPdf);      // aufgelöster Pfad und Dateiname
         main.Controls.Add(_lblWarn);     // Status und Fehlermeldungen
         main.Controls.Add(buttons);

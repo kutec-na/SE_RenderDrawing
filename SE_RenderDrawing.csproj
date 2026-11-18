@@ -10,6 +10,7 @@
 		<RootNamespace>SE_RenderDrawing</RootNamespace>
 		<AssemblyName>SE_RenderDrawing</AssemblyName>
 		<Product>SE_RenderDrawing</Product>
+		<ApplicationIcon>SE_RenderDrawing.ico</ApplicationIcon>
 		<Version>1.2.0</Version>
 		<!-- keine lokalen Pfade in die Binärdateien schreiben -->
 		<Deterministic>true</Deterministic>
